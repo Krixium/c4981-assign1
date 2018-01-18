@@ -12,32 +12,55 @@
 #define CHILD_PROCESSES_COUNT 2
 #define BUFFER_SIZE 5120
 
+/* Read from 0, write to 1 */
 
-void input(const int translatePipe, const int outputPipe)
+void input(const int * translatePipe, const int * outputPipe)
 {
+	const char * msg = "Hello World";
 	char buffer[BUFFER_SIZE];
-	fprintf(stderr, "This is input with pipe id's %d and %d\n", translatePipe, outputPipe);
+	fprintf(stderr, "This is input with pipe id's %p and %p\n", (void*)translatePipe, (void*)outputPipe);
+	write(translatePipe[1], msg, 12);
+	fflush(translatePipe[1]);
+	write(outputPipe[1], msg, 12);
+	fflush(outputPipe[1]);
 }
 
 
-void output(const int inputPipe, const int translatePipe)
+void output(const int * inputPipe, const int * translatePipe)
 {
 	char buffer[BUFFER_SIZE];
-	fprintf(stderr, "This is output with pipe id's %d and %d\n", inputPipe, translatePipe);
+	fprintf(stderr, "This is output with pipe id's %p and %p\n", (void*)inputPipe, (void*)translatePipe);
+	if (read(inputPipe[0], buffer, 14))
+	{
+		fprintf(stdout, "output: %s\n", buffer);
+	}
+	else
+	{
+		fprintf(stderr, "Error reading from pipe in output\n");
+	}
 }
 
 
-void translate(const int inputPipe, const int outputPipe)
+void translate(const int * inputPipe, const int * outputPipe)
 {
 	char buffer[BUFFER_SIZE];
-	fprintf(stderr, "This is translate with pipe id's %d and %d\n", inputPipe, outputPipe);
+	fprintf(stderr, "This is translate with pipe id's %p and %p\n", (void*)inputPipe, (void*)outputPipe);
+	read(inputPipe[0], buffer, 12);
+	if (read(inputPipe[0], buffer, 12))
+	{
+		fprintf(stdout, "translate: %s\n", buffer);
+	}
+	else
+	{
+		fprintf(stderr, "Error reading from pipe in translate\n");
+	}
 }
 
 
 int main(int argc, char * argv[])
 {
 	/* Initialize variables */
-	pid_t childpid;
+	pid_t pid[CHILD_PROCESSES_COUNT];
 	int i;
 
 	/* 
@@ -45,48 +68,36 @@ int main(int argc, char * argv[])
 	 Pipe 1: input to output
 	 Pipe 2: translate to output
 	 */
-	int pipes[3]; 
+	int pipes[3][2]; 
 	
-	/* Create pipes */
-	if (pipe(pipes) < 0)
-	{
-		fprintf(stderr, "Error creating pipes\n");
-		return EXIT_BAD;
-	}
-
-	/* Create processes as a chain */
 	for (i = 0; i < CHILD_PROCESSES_COUNT; i++)
 	{
-		if ((childpid = fork()) <= 0)
+		/* If this is the child process then don't fork */
+		if ((pid[i] = fork()) == 0)
 		{
 			break;
-		}	
+		}
 	}
 
-	/* Determine which processes it is */
-	if (childpid != 0)
+	if (i == 0)
 	{
-		fprintf(stdout, "childpid: %ld			GETPID: %ld			GETPPID: %ld\n",
-				(long)childpid, (long)getpid(), (long)getppid());
+		/* First child */
 		input(pipes[0], pipes[1]);
 	}
-	else if (childpid == 0 && getpid() - getppid() == 1)
+	else if (i == 1)
 	{
-		fprintf(stdout, "childpid: %ld			GETPID: %ld			GETPPID: %ld\n",
-				(long)childpid, (long)getpid(), (long)getppid());
+		/* Second child */
 		output(pipes[1], pipes[2]);
 	}
-	else if (childpid == 0 && getpid() - getppid() == 2)
+	else if (i == 2)
 	{
-		fprintf(stdout, "childpid: %ld			GETPID: %ld			GETPPID: %ld\n",
-				(long)childpid, (long)getpid(), (long)getppid());
+		/* parent */
 		translate(pipes[0], pipes[2]);
 	}
 	else
 	{
-		fprintf(stderr, "Error in creating process\n");
-		return EXIT_BAD;
+		fprintf(stderr, "Error during forking i: %d\n", i);
 	}
-	
+
 	return EXIT_GOOD;
 }
