@@ -1,0 +1,59 @@
+main
+    initialize pipes
+    create pipes
+        0: input to output for echo
+        1: input to translate
+        2: translate to output
+    disable terminal functions
+    create two child processes, output and translate
+
+    if main
+        input
+    if translate
+        translate
+    if output
+        output
+        
+    re-enable terminal functions
+    exit
+
+input
+    initialize buffer for input of size 5120
+    while true
+        if input is enter
+            write buffer to translate pipe
+            clear buffer
+        if input is ctrl-K
+            send interrupt signal
+        if input is T
+            send terminate signal
+        else
+            send character to output pipe
+
+output
+    allocate buffer for pipe of size 5120
+    while true 
+        read from pipe into buffer
+        print buffer
+        clear buffer
+
+translate
+    allocate buffer for pipe of size 5120
+    while true
+        read from pipe into buffer
+        for every character in buffer
+            if character is a
+                replace it with z
+            if character is X
+                erase X and previous character
+            if character is K
+                erase K and everything before it
+        write buffer to output pipe
+        clear buffer
+
+signal handler
+    if SIGINT received
+        re-enable termianl functions
+        exit
+    if SIGKILL received
+        exit
