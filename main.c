@@ -31,6 +31,7 @@ void output(const int * inputPipe, const int * translatePipe)
 	if (read(inputPipe[0], buffer, 14))
 	{
 		fprintf(stdout, "output: %s\n", buffer);
+		fflush(stdout);
 	}
 	else
 	{
@@ -47,6 +48,7 @@ void translate(const int * inputPipe, const int * outputPipe)
 	if (read(inputPipe[0], buffer, 12))
 	{
 		fprintf(stdout, "translate: %s", buffer);
+		fflush(stdout);
 	}
 	else
 	{
