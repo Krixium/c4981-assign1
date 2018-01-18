@@ -72,7 +72,7 @@ int main(int argc, char * argv[])
 	
 	for (i = 0; i < CHILD_PROCESSES_COUNT; i++)
 	{
-		pipe(pipes[1]);
+		pipe(pipes[i]);
 		/* If this is the child process then don't fork */
 		if ((pid[i] = fork()) == 0)
 		{
