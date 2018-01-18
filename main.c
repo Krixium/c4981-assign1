@@ -20,9 +20,7 @@ void input(const int * translatePipe, const int * outputPipe)
 	char buffer[BUFFER_SIZE];
 	fprintf(stderr, "This is input with pipe id's %p and %p\n", (void*)translatePipe, (void*)outputPipe);
 	write(translatePipe[1], msg, 12);
-	fflush(translatePipe[1]);
 	write(outputPipe[1], msg, 12);
-	fflush(outputPipe[1]);
 }
 
 
@@ -48,7 +46,7 @@ void translate(const int * inputPipe, const int * outputPipe)
 	read(inputPipe[0], buffer, 12);
 	if (read(inputPipe[0], buffer, 12))
 	{
-		fprintf(stdout, "translate: %s\n", buffer);
+		fprintf(stdout, "translate: %s", buffer);
 	}
 	else
 	{
