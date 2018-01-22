@@ -98,10 +98,11 @@ void translate(const int * inputPipe, const int * outputPipe)
 {
 	int i;
 	int j;
+	int n;
 	char buffer[BUFFER_SIZE];
 	char outputString[BUFFER_SIZE];
 
-	while (read(inputPipe[0], buffer, BUFFER_SIZE))
+	while ((n = read(inputPipe[0], buffer, BUFFER_SIZE)))
 	{
 		parseString(outputString, buffer);	
 		memset(buffer, 0, BUFFER_SIZE);
