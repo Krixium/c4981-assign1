@@ -7,18 +7,18 @@
 #include <unistd.h>
 
 #define PID_COUNT 2
-#define BUFFER_SIZE 5120 
+#define BUFFER_SIZE 5118 
 
 pid_t pid[PID_COUNT];
 
 
-void input(const int translatePipe, const int outputPipe)
+void input(const int * translatePipe, const int * outputPipe)
 {
 	char c;
+	const char r = '\r';
+	const char n = '\n';
 	char buffer[BUFFER_SIZE];
 	int i = 0;
-
-	memset(buffer, 0, BUFFER_SIZE);
 
 	while ((c = getchar()))
 	{
@@ -33,15 +33,15 @@ void input(const int translatePipe, const int outputPipe)
 		}
 		else if (c == 'E')
 		{
+			write(outputPipe[1], &r, 1);
+			write(outputPipe[1], &n, 1);
 			write(translatePipe[1], buffer, strlen(buffer));
-			fsync(translatePipe[1]);
 			memset(buffer, 0, i);
 			i = 0;
 		}
 		else
 		{
 			write(outputPipe[1], &c, 1);
-			fsync(outputPipe[1]);
 			buffer[i] = c;
 			i++;
 		}
@@ -49,15 +49,15 @@ void input(const int translatePipe, const int outputPipe)
 }
 
 
-void output(const int inputPipe, const int translatePipe)
+void output(const int * inputPipe, const int  * translatePipe)
 {
 	char iBuffer;
 	char tBuffer[BUFFER_SIZE];
 	int iRead;
 	int tRead;
 	
-	fcntl(inputPipe[0], F_SETFL, O_NDELAY);
-	fcntl(translatePipe[0], F_SETFL, O_NDELAY);
+	/* fcntl(inputPipe[0], F_SETFL, O_NDELAY);
+	fcntl(translatePipe[0], F_SETFL, O_NDELAY); */
 
 	for (;;)
 	{
@@ -71,7 +71,7 @@ void output(const int inputPipe, const int translatePipe)
 		}
 		if (tRead > 0)
 		{
-			fprintf(stdout, "\r\n%s\r\n", tBuffer);
+			fprintf(stdout, "%s", tBuffer);
 			memset(tBuffer, 0, BUFFER_SIZE);
 		}
 		fflush(stdout);
@@ -106,11 +106,13 @@ void parseString(char * dest, const char * src)
 		}
 	}
 
-	dest[j] = '\0';
+	dest[j] = '\r';
+	dest[j + 1] = '\n';
+	dest[j + 2] = '\0';
 }
 
 
-void translate(const int inputPipe, const int outputPipe)
+void translate(const int * inputPipe, const int * outputPipe)
 {
 	int i;
 	int j;
@@ -146,6 +148,16 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	/* Set no delay for the reading ends of pipes that go to output */
+	if (fcntl(pipes[1][0], F_SETFL, O_NDELAY) < 0)
+	{
+		fprintf(stderr, "Error setting flag on pipe\n");
+	}
+	if (fcntl(pipes[2][0], F_SETFL, O_NDELAY) < 0)
+	{
+		fprintf(stderr, "Error setting flag on pipe\n");
+	}
+
 	/* Disable terminal functions */
 	system("stty raw igncr -echo");
 
@@ -165,12 +177,12 @@ int main(int argc, char * argv[])
 		/* First child */
 		output(pipes[1], pipes[2]);
 	}
-	else if (childpid == 0 && getpid() - getppid() == 1)
+	else if (i == 1)
 	{
 		/* Second child */
 		translate(pipes[0], pipes[2]);
 	}
-	else if (childpid == 0 && getpid() - getppid() == 2)
+	else if (i == 2)
 	{
 		/* Parent */
 		input(pipes[0], pipes[1]);
