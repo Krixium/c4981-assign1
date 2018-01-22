@@ -5,55 +5,69 @@ main
         1: input to translate
         2: translate to output
     disable terminal functions
-    create two child processes, output and translate
+    create three child processes, output, and translate
+    assign the approriate pipes to each
 
-    if main
+    if parent 
         input
-    if translate
-        translate
-    if output
+        close pipes
+        close child processes wit SIGTERM
+    if child 1
         output
+    if child 2
+        translate
         
     re-enable terminal functions
     exit
 
 input
-    initialize buffer for input of size 5120
-    while true
-        if input is enter
-            write buffer to translate pipe
-            clear buffer
-        if input is ctrl-K
-            send interrupt signal
+    initialize buffer for input of size 5118
+    while receiving characters from user
+        if input is ^k
+            abnormal terminate the program
         if input is T
-            send terminate signal
+            break            
+        if input is E
+            send charcters to translate
         else
-            send character to output pipe
+            send character to output
+            save character to buffer
 
 output
-    allocate buffer for pipe of size 5120
-    while true 
-        read from pipe into buffer
-        print buffer
-        clear buffer
+    allocate character buffer for input
+    allocate buffer for translate pipe of size 5118
+    while not exit and not terminate 
+        read from input pipe into input buffer
+        read from translate pipe into translate buffer
+        if something was read from input
+            write character to screen
+            clear buffer
+        if something was read from translate
+            write buffer to screen with \r\n
+            clear buffer
+        flush stdout
 
 translate
-    allocate buffer for pipe of size 5120
-    while true
+    allocate buffer for pipe of size 5118
+    while not exit and not terminate
         read from pipe into buffer
-        for every character in buffer
-            if character is a
-                replace it with z
-            if character is X
-                erase X and previous character
-            if character is K
-                erase K and everything before it
-        write buffer to output pipe
-        clear buffer
+            if something was read
+                for every character
+                    case ^-k
+                        send SIGQUIT
+                        break
+                    default
+                        parseBuffer
+                        send translation to output
+                        break;
 
-signal handler
-    if SIGINT received
-        re-enable termianl functions
-        exit
-    if SIGKILL received
-        exit
+parseBuffer
+    look at every character from source
+        if the character is K
+            clear destination
+        if the chacater is X
+            remove 1 character from the end of destination
+        if character is a
+            put z at destination
+        else
+            copy the character to destination
