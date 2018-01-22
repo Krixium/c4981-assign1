@@ -1,5 +1,5 @@
 /*------------------------------------------------------------------------------------------------------------------
-
+-- SOURCE FILE: 		io.c - An applicaiton that emulates a terminal with raw input from the keyboard.
 --
 -- PROGRAM: 			termEmu
 --
@@ -72,16 +72,8 @@ void input(const int * translatePipe, const int * outputPipe)
 		else
 		{
 			write(outputPipe[1], &c, 1);
-			if (i < BUFFER_SIZE - 1)
-			{
-				buffer[i] = c;
-				i++;
-			}
-			else
-			{
-				fprintf(stderr, "\r\nPlease submit your line before reaching %d characters\r\n", BUFFER_SIZE);
-				break;
-			}
+			buffer[i] = c;
+			i++;
 		}
 	}
 }
