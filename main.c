@@ -1,133 +1,56 @@
-#include <fcntl.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
 
-#define PID_COUNT 2
-#define BUFFER_SIZE 5118 
+/*------------------------------------------------------------------------------------------------------------------
+-- SOURCE FILE: 		main.c - An applicaiton that emulates a terminal with raw input from the keyboard.
+--
+-- PROGRAM: 			termEmu
+--
+-- FUNCTIONS:			int main(int argc, char * argv[])
+--
+-- DATE: 				January 21, 2018
+--
+-- DESIGNER: 			Benny Wang
+--
+-- PROGRAMMER: 			Benny Wang
+--
+-- NOTES:
+-- This program puts the terminal into raw mode and emulates the keyboard input functionality. This is done with three
+-- processes, one for input, one for output, and one for parsing user intput.
+--
+-- Some functions that are different from a normal terminal:
+--		E 	- Enter
+--		T 	- Normal termination of the program
+--		^K	- Abnormal termination of the program
+--
+-- All user input is also passed to a function that parses it. When an X deletes the previous character, K is line-clear
+-- and all instances of 'a' is converted to 'z'.
+----------------------------------------------------------------------------------------------------------------------*/
+#include "main.h"
+#include "io.h"
 
 pid_t pid[PID_COUNT];
 
-
-void input(const int * translatePipe, const int * outputPipe)
-{
-	char c;
-	const char r = '\r';
-	const char n = '\n';
-	char buffer[BUFFER_SIZE];
-	int i = 0;
-
-	while ((c = getchar()))
-	{
-		/* ^K send ASCII 11 */
-		if (c == (char)11)
-		{
-			kill(0, SIGQUIT);
-		}
-		else if (c == 'T')
-		{
-			break;
-		}
-		else if (c == 'E')
-		{
-			write(outputPipe[1], &r, 1);
-			write(outputPipe[1], &n, 1);
-			write(translatePipe[1], buffer, strlen(buffer));
-			memset(buffer, 0, i);
-			i = 0;
-		}
-		else
-		{
-			write(outputPipe[1], &c, 1);
-			buffer[i] = c;
-			i++;
-		}
-	}
-}
-
-
-void output(const int * inputPipe, const int  * translatePipe)
-{
-	char iBuffer;
-	char tBuffer[BUFFER_SIZE];
-	int iRead;
-	int tRead;
-	
-	/* fcntl(inputPipe[0], F_SETFL, O_NDELAY);
-	fcntl(translatePipe[0], F_SETFL, O_NDELAY); */
-
-	for (;;)
-	{
-		iRead = read(inputPipe[0], &iBuffer, 1);
-		tRead = read(translatePipe[0], tBuffer, BUFFER_SIZE);
-
-		if (iRead > 0)
-		{
-			fprintf(stdout, "%c", iBuffer);
-			iBuffer = '\0';
-		}
-		if (tRead > 0)
-		{
-			fprintf(stdout, "%s", tBuffer);
-			memset(tBuffer, 0, BUFFER_SIZE);
-		}
-		fflush(stdout);
-	}
-}
-
-
-void parseString(char * dest, const char * src)
-{
-	int i;
-	int j;
-
-	for (i = 0, j = 0; i < strlen(src) ; i++)
-	{
-		if (src[i] == 'a')
-		{
-			dest[j] = 'z';
-			j++;
-		}
-		else if (src[i] == 'K')
-		{
-			j = 0;
-		}
-		else if (src[i] == 'X')
-		{
-			j--;
-		}
-		else
-		{
-			dest[j] = src[i];
-			j++;
-		}
-	}
-
-	dest[j] = '\r';
-	dest[j + 1] = '\n';
-	dest[j + 2] = '\0';
-}
-
-
-void translate(const int * inputPipe, const int * outputPipe)
-{
-	int i;
-	int j;
-	char buffer[BUFFER_SIZE];
-	char outputString[BUFFER_SIZE];
-
-	while (read(inputPipe[0], buffer, BUFFER_SIZE))
-	{
-		parseString(outputString, buffer);	
-		memset(buffer, 0, BUFFER_SIZE);
-		write(outputPipe[1], outputString, strlen(outputString));
-	}
-}
-
-
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION: 			main
+--
+-- DATE: 				January 21, 2018
+--
+-- DESIGNER: 			Benny Wang
+--
+-- PROGRAMMER: 			Benny Wang
+--
+-- INTERFACE: 			int main (int argc, char * argv[])
+--							int argc: The amount of commandline arguements passed to the program. Not used.
+--							char * argv[]: List of command line arguements passed to the program. Not used.
+--
+-- RETURNS: 			An exit code.
+--
+-- NOTES:
+-- The main entry function of the program. This function is where all pipes and processes are created. The reading end
+-- of the pipes that connect input with output, and translate with output, are set to no wait. The two processes this
+-- function creates are created as children to the main proccess(fan style). If the process is the parent process, it
+-- also manages the closing of the pipes and sending exit signals to the two children processes when the user wants to
+-- end execution of the program.
+----------------------------------------------------------------------------------------------------------------------*/
 int main(int argc, char * argv[])
 {
 	/* 
@@ -152,10 +75,12 @@ int main(int argc, char * argv[])
 	if (fcntl(pipes[1][0], F_SETFL, O_NDELAY) < 0)
 	{
 		fprintf(stderr, "Error setting flag on pipe\n");
+		return EXIT_FAILURE;
 	}
 	if (fcntl(pipes[2][0], F_SETFL, O_NDELAY) < 0)
 	{
 		fprintf(stderr, "Error setting flag on pipe\n");
+		return EXIT_FAILURE;
 	}
 
 	/* Disable terminal functions */
