@@ -113,8 +113,8 @@ int main(int argc, char * argv[])
 		input(pipes[0], pipes[1]);
 
 		/* End child proccesses */
-		kill(pid[0], SIGTERM);
-		kill(pid[1], SIGTERM);
+		kill(pid[0], SIGKILL);
+		kill(pid[1], SIGKILL);
 
 		/* Close pipes */
 		for (i = 0; i < 3; i++)
